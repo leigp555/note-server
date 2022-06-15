@@ -1,15 +1,22 @@
+import config from "../config/db_config";
 const mysql = require('mysql');
-// @ts-ignore
-import {FieldInfo, MysqlError, PoolConnection} from "mysql";
+import {MysqlError, PoolConnection} from "mysql";
+
+//测试第一次连接mysql
+const test = mysql.createConnection(config.mysql_option);
+test.connect(function(err:MysqlError) {
+    if (err) {
+        console.error('mysql连接失败: ' + err.stack);
+        return;
+    }
+    console.log('mysql连接成功');
+});
+test.end()
+
 
 //创建mysql连接池
-const pool = mysql.createPool({
-    connectionLimit: 100,
-    host: 'localhost',
-    user: 'root',
-    password: '123456',
-    database: 'user',
-});
+const pool = mysql.createPool(config.mysql_option);
+
 //封装数据库查询操作
 export const mdb={
     query(...sql:string[]){
@@ -20,7 +27,6 @@ export const mdb={
                     reject(err)
                     return
                 }
-                //使用连接获取查询结果
                 // @ts-ignore
                 connection.query(...sql, function (error:MysqlError|null, results:any) {
                     connection.release();
@@ -31,4 +37,41 @@ export const mdb={
     }
 }
 
+//创建user表
+const createUser:string=`create table user(
+id int primary key auto_increment,
+username varchar(9),
+password varchar(10),
+createAt date,
+updateAt date
+)`
+pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
+    if(err){
+        console.log(err)
+        return
+    }
+    connection.query(createUser, function (error:MysqlError|null, results:any) {
+        connection.release();
+        error?console.log('创建user表失败'):console.log("成功创建user表")
+    });
+});
 
+//创建article表
+const createArticle:string=`
+create table article(
+id int primary key auto_increment,
+username varchar(9), 
+password varchar(10),
+createAt date,
+updateAt date
+)`
+pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
+    if(err){
+        console.log(err)
+        return
+    }
+    connection.query(createArticle, function (error:MysqlError|null, results:any) {
+        connection.release();
+        error?console.log('创建article表失败'):console.log("成功创建article表")
+    });
+});
