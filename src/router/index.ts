@@ -1,3 +1,5 @@
+import {createDate} from "../model/createDate";
+
 const express = require("express");
 import {NextFunction, Request, Response} from "express";
 import {rdb} from "../model/redis_connect";
@@ -18,9 +20,9 @@ router.get('/test/redis', async (req:Request, res:Response) => {
 });
 router.get('/test/mysql', async (req:Request, res:Response,next:NextFunction) => {
     try{
-        const ret= await mdb.query('SELECT * from tom where name=?','lgp')
-        const user= await mdb.query('SELECT * from tom ')
-        res.json({mysqlRet:ret,user})
+        const ret= await mdb.query('SELECT * from user where name=?','lgp')
+        const user= await mdb.query('SELECT * from user')
+        res.json({user})
     }catch (err) {
         next(err)
     }
@@ -52,7 +54,9 @@ router.post('/register',async (req:Request, res:Response,next:NextFunction) => {
         return
     }
     try{
-        await mdb.query('')
+        const newUser= createDate.user(username,email,password)
+        console.log(`insert into user(${Object.keys(newUser).join()}) values (${Object.values(newUser).join()})`)
+        //await mdb.query(`insert into user values (Username username,Email 122974945@qq.com,Password 123456)`)
         res.json({msg:'注册成功'})
     }catch (err) {
         next(err)
