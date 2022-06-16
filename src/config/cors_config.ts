@@ -1,6 +1,6 @@
 //跨域处理中间件配置
 export const corsOptions = {
-    origin: 'http://127.0.0.1:3000',
+    origin: 'http://localhost:4500',
     methods:['GET', 'PUT', 'POST','OPTIONS','PATCH','HEAD','DELETE'],
     allowedHeaders:['Content-Type', 'Authorization','Origin', 'X-Requested-With','Accept'],
     optionsSuccessStatus: 200,
