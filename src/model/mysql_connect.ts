@@ -38,12 +38,14 @@ export const mdb={
 }
 
 //创建user表
-const createUser:string=`create table user(
+const createUser:string=`
+create table user(
 id int primary key auto_increment,
-username varchar(9),
-password varchar(10),
-createAt date,
-updateAt date
+username varchar(20), 
+email varchar(20),
+password varchar(20),
+createdAt DATETIME,
+updatedAt DATETIME
 )`
 pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
     if(err){
@@ -52,7 +54,6 @@ pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
     }
     connection.query(createUser, function (error:MysqlError|null, results:any) {
         connection.release();
-        error?console.log('创建user表失败'):console.log("成功创建user表")
     });
 });
 
@@ -60,10 +61,12 @@ pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
 const createArticle:string=`
 create table article(
 id int primary key auto_increment,
-username varchar(9), 
-password varchar(10),
-createAt date,
-updateAt date
+owner varchar(20), 
+title varchar(50),
+body varchar(5000),
+state varchar(10),
+createdAt DATETIME,
+updatedAt DATETIME
 )`
 pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
     if(err){
@@ -72,6 +75,43 @@ pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
     }
     connection.query(createArticle, function (error:MysqlError|null, results:any) {
         connection.release();
-        error?console.log('创建article表失败'):console.log("成功创建article表")
+    });
+});
+
+//创建用户头像表
+const createAvatar:string=`
+create table avatar(
+id int primary key auto_increment,
+owner varchar(20), 
+body varchar(5000),
+createdAt DATETIME,
+updatedAt DATETIME
+)`
+pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
+    if(err){
+        console.log(err)
+        return
+    }
+    connection.query(createAvatar, function (error:MysqlError|null, results:any) {
+        connection.release();
+    });
+});
+
+//创建画板图片表
+const createCanvas:string=`
+create table canvas(
+id int primary key auto_increment,
+owner varchar(20), 
+body varchar(5000),
+createdAt DATETIME,
+updatedAt DATETIME
+)`
+pool.getConnection(function(err:MysqlError, connection:PoolConnection) {
+    if(err){
+        console.log(err)
+        return
+    }
+    connection.query(createCanvas, function (error:MysqlError|null, results:any) {
+        connection.release();
     });
 });

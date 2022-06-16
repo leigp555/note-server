@@ -17,7 +17,7 @@ const message =(user_email:string,securityCode:number)=>({
     <div style="display:flex;flex-direction: column;gap: 50px">
       <p style="color: blue;font-size: 24px;text-align: center;margin-top: 50px" id="code">验证码: ${securityCode}</p>
       <div>
-       <p>此验证码2分钟后将失效!</p>
+       <p>此验证码将在3分钟后!</p>
        <p style="font-weight:bold">非本人操作请忽略</p>
       </div>
    </div>
