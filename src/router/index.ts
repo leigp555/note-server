@@ -3,11 +3,11 @@ import {createDate} from "../model/createDate";
 const express = require("express");
 import {NextFunction, Request, Response} from "express";
 import {rdb} from "../model/redis_connect";
-import {mdb} from "../model/mysql_connect";
 import {sign} from "../util/jwt";
 import {jwtSecret} from "../config/jwt_config";
 import {email} from "../util/send_email"
 import {Register} from "../common/type";
+import {Articles, Avatars, CanvasImages, Users} from "../model/mdb_create";
 
 const router = express.Router();
 
@@ -20,14 +20,20 @@ router.get('/test/redis', async (req:Request, res:Response) => {
 });
 router.get('/test/mysql', async (req:Request, res:Response,next:NextFunction) => {
     try{
-        const ret= await mdb.query('SELECT * from user where name=?','lgp')
-        const user= await mdb.query('SELECT * from user')
-        res.json({user})
+        //创建一条数据
+        const user = createDate.user("admin", '122974945@qq.com', '123456');
+        const userItem = await Users.create(user)
+        const article = createDate.article("admin", '天气', '天气不错',"normal",false);
+        const articleItem = await Articles.create(article)
+        const avatar = createDate.avatar("admin", '头像');
+        const avatarItem = await Avatars.create(avatar)
+        const canvasImg = createDate.canvasImg("admin", 'canvas',true);
+        const canvasItem = await CanvasImages.create(canvasImg)
+        res.json({userItem,articleItem,avatarItem,canvasItem})
     }catch (err) {
         next(err)
     }
 });
-
 
 //发送验证码
 router.post('/securityCode',async (req:Request, res:Response,next:NextFunction) => {

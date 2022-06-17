@@ -1,8 +1,8 @@
-import dayjs, {Dayjs} from "dayjs";
+import dayjs from "dayjs";
 import {ArticleItem, AvatarItem, CanvasImg, UserItem} from "../common/type";
 export const createDate={
     //创建用户对象
-    user(username:string,email:string,password:string){
+    user(username:string,email:string,password:string):UserItem{
         return ({
             username,
             email,
@@ -12,7 +12,7 @@ export const createDate={
         })
     },
     //创建文章对象
-    article(owner:string,title:string,body:string,state:string,isPublic='false'):ArticleItem{
+    article(owner:string,title:string,body:string,state:string,isPublic=false):ArticleItem{
         return ({
             owner,
             title,
@@ -33,7 +33,7 @@ export const createDate={
         })
     },
     //创建canvas图片对象
-    canvasImg(owner:string,body:string,isPublic="false"):CanvasImg{
+    canvasImg(owner:string,body:string,isPublic=false):CanvasImg{
         return ({
             owner ,
             body ,

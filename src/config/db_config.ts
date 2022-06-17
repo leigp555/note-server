@@ -1,20 +1,12 @@
 //初始化mysql并添加数据库
-const mysql_option={
+const mysql_config={
     port: 3306,
-    connectionLimit: 10,
     host: 'localhost',
-    user: 'root',
-    password: '123456',
-}
-//mysql连接池
-const mysql_pool_option={
-    port: 3306,
-    connectionLimit: 100,
-    host: 'localhost',
-    user: 'root',
     password: '123456',
     database: 'note',
+    username: 'root',
 }
+//redis配置
 const redis_option={
     port: 6379,
     host: '121.40.211.164',
@@ -32,4 +24,4 @@ const redis_option={
         }
     }
 }
-export default {mysql_option,redis_option,mysql_pool_option}
+export default {mysql_config,redis_option}

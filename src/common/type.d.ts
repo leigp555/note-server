@@ -22,7 +22,7 @@ export interface ArticleItem{
     title:string,
     body:string,
     state:string,
-    isPublic:string,
+    isPublic:boolean,
     createdAt:Dayjs,
     updatedAt:Dayjs
 }
@@ -39,7 +39,7 @@ export interface CanvasImg{
     id ?:number,
     owner :string,
     body :string,
-    isPublic:string,
+    isPublic:boolean,
     createdAt:Dayjs,
     updatedAt:Dayjs
 }
