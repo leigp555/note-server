@@ -25,7 +25,7 @@ const message = (user_email: string, securityCode: string) => ({
 });
 
 //发送邮件
-export const email = (user_email: string, security_code: string) => {
+export const send_email = (user_email: string, security_code: string) => {
   return new Promise((resolve, reject) => {
     send.sendMail(
       message(user_email, security_code),

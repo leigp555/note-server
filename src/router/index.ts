@@ -1,14 +1,20 @@
 const express = require("express");
-import { NextFunction, Request, Response } from "express";
+const { promisify } = require("util");
+const fs = require("fs");
+import e, { NextFunction, Request, Response } from "express";
 import { rdb } from "../model/redis_connect";
 import { sign } from "../util/jwt";
 import { jwtSecret } from "../config/jwt_config";
-import { email } from "../util/send_email";
+import { send_email } from "../util/send_email";
 import { Register } from "../common/type";
 import { Articles, Avatars, CanvasImages, Users } from "../model/mdb_create";
 const { Op } = require("sequelize");
-
+import { verifyToken } from "../middleware/verify_token";
 const router = express.Router();
+
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+const unlink = promisify(fs.unlink);
 
 //测试
 router.get("/test/redis", async (req: Request, res: Response) => {
@@ -44,7 +50,7 @@ router.post(
       const security_code = Math.round(
         Math.random() * Math.pow(10, 6)
       ).toString();
-      await email(user_email, security_code);
+      await send_email(user_email, security_code);
       await rdb.setex(`${user_email}:${security_code}`, 180, security_code);
       res.send({ msg: "验证码已发送" });
     } catch (err: any) {
@@ -75,8 +81,8 @@ router.post(
             [Op.eq]: username,
           },
         },
-      });
-      if (is_username_save[0]) {
+      })[0];
+      if (is_username_save) {
         res.status(400).json({
           errors: { errMsg: "用户名已存在", username: is_username_save },
         });
@@ -90,8 +96,8 @@ router.post(
             [Op.eq]: email,
           },
         },
-      });
-      if (is_email_save[0]) {
+      })[0];
+      if (is_email_save) {
         res.status(400).json({
           errors: { errMsg: "邮箱已存在", email: is_email_save },
         });
@@ -118,12 +124,12 @@ router.post(
           where: {
             [Op.and]: [{ email: username }, { password }],
           },
-        });
-        if (user[0]) {
-          const token = await sign({ user: username }, jwtSecret, {
+        })[0];
+        if (user) {
+          const token = await sign({ user: username.email }, jwtSecret, {
             expiresIn: "2h",
           });
-          res.status(200).json({ user: username, token });
+          res.status(200).json({ user: username, token: "Bearer" + token });
         } else {
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
@@ -135,12 +141,12 @@ router.post(
           where: {
             [Op.and]: [{ username }, { password }],
           },
-        });
-        if (user[0]) {
-          const token = await sign({ user: username }, jwtSecret, {
+        })[0];
+        if (user) {
+          const token = await sign({ user: user.email }, jwtSecret, {
             expiresIn: "2h",
           });
-          res.status(200).json({ user: username, token });
+          res.status(200).json({ user: username, token: "Bearer" + token });
         } else {
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
@@ -153,26 +159,97 @@ router.post(
 
 //获取头像
 router.get(
-  "/test/redis",
-  async (req: Request, res: Response, next: NextFunction) => {
+  "/avatar",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      //解析token获取用户信息
-      //获取头像路径
-      // const avatarPath = await Avatars.findAll({
-      //   attributes: ["path"],
-      //   where: {
-      //     owner: {
-      //       [Op.eq]: req.username,
-      //     },
-      //   },
-      // });
+      // 获取头像路径
+      const avatarPath = await Avatars.findAll({
+        attributes: ["path"],
+        where: {
+          owner: {
+            [Op.eq]: req.userEmail,
+          },
+        },
+      })[0];
+      if (avatarPath) {
+        //头像存在
+        const avatar_file = await readFile(avatarPath);
+        res.status(200).send(avatar_file);
+      } else {
+        //头像不存在，创建头像
+        const rand_code = Math.round(Math.random() * Math.pow(10, 6));
+        const default_avatar = await readFile("../assert/avatar/default.jpg");
+        const newAvatarPath = `../assert/avatar/${
+          req.userEmail + rand_code
+        }.jpg`;
+        await writeFile(newAvatarPath, default_avatar);
+        await Avatars.create({ owner: req.userEmail, path: newAvatarPath });
+        res.status(200).send(default_avatar);
+      }
     } catch (error) {
       next(error);
     }
   }
 );
 
+//更换头像
+router.post(
+  "/update/avatar",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const avatar_file = req.body.avatar;
+    try {
+      // 获取头像路径
+      const avatarPath = await Avatars.findAll({
+        attributes: ["path"],
+        where: {
+          owner: {
+            [Op.eq]: req.userEmail,
+          },
+        },
+      })[0];
+      if (avatarPath) {
+        //头像存在，替换头像
+        await writeFile(avatarPath, avatar_file);
+      } else {
+        res.status(500).json({ errMsg: "头像更新失败" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 //创建新文章
+router.post(
+  "/article",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { owner, title, body, isPublic, state } = req.body;
+    try {
+      //向数据库插入数据
+      Articles.create({ owner, title, body, isPublic, state });
+      //返回新创建的文章
+      res
+        .status(200)
+        .json({ article: { owner, title, body, isPublic, state } });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 //删除文章
 //修改文章
 //查询文章

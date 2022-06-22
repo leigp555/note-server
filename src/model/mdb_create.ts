@@ -3,7 +3,6 @@ import config from "../config/db_config";
 
 const fs = require("fs");
 
-const defaultAvatar = fs.readFileSync("src/assert/e.jpg");
 //配置连接
 const { port, host, password, database, username } = config.mysql_config;
 const sequelize = new Sequelize(database, username, password, {
@@ -101,6 +100,11 @@ Articles.init(
       default: "normal",
       comment: "文章状态",
     },
+    identity_number: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      comment: "文章id",
+    },
     isPublic: {
       type: DataTypes.BOOLEAN,
       default: false,
@@ -140,6 +144,7 @@ Avatars.init(
       allowNull: false,
       default: "匿名",
       comment: "拥有者",
+      unique: true,
     },
     path: {
       type: DataTypes.TEXT,
