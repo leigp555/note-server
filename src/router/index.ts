@@ -3,6 +3,7 @@ const { promisify } = require("util");
 const { QueryTypes } = require("sequelize");
 const fs = require("fs");
 import { NextFunction, Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
 import { db } from "../model/mdb_create";
 import { rdb } from "../model/redis_connect";
 import { sign } from "../util/jwt";
@@ -441,11 +442,108 @@ router.post(
   ) => {
     const { content, isPublic } = req.body;
     try {
-      res.status(200).json({ path: "" });
+      const random_code = uuidv4();
+      const newAvatarPath = `../assert/canvas/${random_code}.jpg`;
+      await writeFile(newAvatarPath, content);
+      await CanvasImages.create({
+        owner: req.userEmail,
+        path: newAvatarPath,
+        isPublic,
+        identity_number: random_code,
+      });
+      res.status(200).json({ imgId: random_code });
     } catch (error) {
       next(error);
     }
   }
 );
-//获取图片
+//通过imgId获取单张图片
+router.get(
+  "/img/imgId",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { imgId } = req.params;
+    try {
+      //获取符合要求的文章
+      let sql = `select owner,identity_number,path from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ? and canvasImages.identity_number= ?)`;
+      const identity_image = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false, imgId],
+        type: QueryTypes.SELECT,
+      });
+      const ret = identity_image[0];
+      if (ret) {
+        const imgFile = await readFile(ret.path);
+        res.status(200).json({ img: imgFile });
+      } else {
+        res.status(404).json({ errMsg: "内容不存在" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//获取所有的图片
+router.get(
+  "/img/all",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      //获取所有图片信息
+      const { offset, limit } = req.params;
+      let sql = `select owner,identity_number,path from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ?) limit ${offset},${limit}`;
+      const all_image = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false],
+        type: QueryTypes.SELECT,
+      });
+      const ret = all_image[0];
+      if (ret) {
+        let images: string[] = [];
+        type Image = { owner: string; identity_number: string; path: string };
+        all_image.forEach(async (item: Image) => {
+          const imgFile = await readFile(item.path);
+          images.push(imgFile);
+        });
+        res.status(200).json({ images });
+      } else {
+        res.status(404).json({ errMsg: "内容不存在" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//删除图片
+router.delete(
+  "/img/imgId",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { imgId } = req.params;
+    try {
+      //标记已删除
+      await CanvasImages.update(
+        { deleted: true },
+        {
+          where: {
+            [Op.and]: [{ identity_number: imgId }, { owner: req.userEmail }],
+          },
+        }
+      );
+      res.status(200).json({ msg: "删除成功" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 export default router;

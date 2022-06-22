@@ -213,9 +213,19 @@ CanvasImages.init(
     },
     path: {
       type: DataTypes.STRING(2000),
-      allowNull: false,
-      defaultValue: "匿名",
+      allowNull: true,
       comment: "图片内容",
+    },
+    deleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+      comment: "是否删除",
+    },
+    identity_number: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+      comment: "图片id",
     },
     isPublic: {
       type: DataTypes.BOOLEAN,
