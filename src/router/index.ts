@@ -322,7 +322,7 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
-    const { offset, limit } = req.params;
+    const { offset, limit } = req.query;
     try {
       //获取所有文章
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
@@ -347,7 +347,7 @@ router.get(
   ) => {
     try {
       //获取文章
-      const { identity_number } = req.params;
+      const { identity_number } = req.query;
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.identity_number=?)`;
       const ret = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, identity_number],
@@ -371,7 +371,7 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
-    const { offset, limit } = req.params;
+    const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?and articles.state= ?) limit ${offset},${limit}`;
@@ -394,7 +394,7 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
-    const { offset, limit } = req.params;
+    const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
@@ -418,7 +418,7 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
-    const { keyword, offset, limit } = req.params;
+    const { keyword, offset, limit } = req.query;
     try {
       //获取符合要求的文章
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.title like ?) limit ${offset},${limit}`;
@@ -467,7 +467,7 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
-    const { imgId } = req.params;
+    const { imgId } = req.query;
     try {
       //获取符合要求的文章
       let sql = `select owner,identity_number,path from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ? and canvasImages.identity_number= ?)`;
@@ -498,7 +498,7 @@ router.get(
   ) => {
     try {
       //获取所有图片信息
-      const { offset, limit } = req.params;
+      const { offset, limit } = req.query;
       let sql = `select owner,identity_number,path from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ?) limit ${offset},${limit}`;
       const all_image = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false],
@@ -530,7 +530,7 @@ router.delete(
     res: Response,
     next: NextFunction
   ) => {
-    const { imgId } = req.params;
+    const { imgId } = req.query;
     try {
       //标记已删除
       await CanvasImages.update(
@@ -550,7 +550,7 @@ router.delete(
 
 router.get(
   "/translate",
-  // verifyToken,
+  verifyToken,
   async (
     req: Request & { userEmail: string },
     res: Response,
@@ -561,7 +561,6 @@ router.get(
       from: string;
       to: string;
     };
-    console.log(word, from, to);
     try {
       const result = await translate(word, from, to);
       res.status(200).json({ result });
