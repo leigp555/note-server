@@ -239,7 +239,7 @@ router.post(
   ) => {
     const { owner, title, body, isPublic, state } = req.body;
     try {
-      //向数据库插入数据
+      //向数据库中插入数据
       Articles.create({ owner, title, body, isPublic, state });
       //返回新创建的文章
       res
@@ -250,7 +250,34 @@ router.post(
     }
   }
 );
+
 //删除文章
+router.delete(
+  "/article",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { identity_number } = req.body;
+    try {
+      //在数据库中标记文章已删除
+      await Articles.update(
+        { deleted: true },
+        {
+          where: {
+            identity_number,
+          },
+        }
+      );
+      res.status(200).json({ msg: "操作成功" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 //修改文章
 //查询文章
 //图片存储

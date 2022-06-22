@@ -111,6 +111,12 @@ Articles.init(
       allowNull: false,
       comment: "是否公开",
     },
+    deleted: {
+      type: DataTypes.BOOLEAN,
+      default: false,
+      allowNull: false,
+      comment: "是否删除",
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
