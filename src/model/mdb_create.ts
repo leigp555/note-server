@@ -171,8 +171,8 @@ Avatars.init(
     },
     path: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "匿名",
+      allowNull: true,
+      defaultValue: "../assert/avatar/default.jpg",
       comment: "图片内容",
     },
     createdAt: {

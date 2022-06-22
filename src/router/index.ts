@@ -163,18 +163,16 @@ router.get(
   ) => {
     try {
       // 获取头像路径
-      const avatarPath = await Avatars.findAll({
-        attributes: ["path"],
-        where: {
-          owner: {
-            [Op.eq]: req.userEmail,
-          },
-        },
-      })[0];
-      if (avatarPath) {
+      let sql = "select path from avatars where (avatars.owner= ?)";
+      const avatarPath = await db.sequelize.query(sql, {
+        replacements: [req.userEmail],
+        type: QueryTypes.SELECT,
+      });
+      const ret = avatarPath[0].path;
+      if (ret) {
         //头像存在
-        const avatar_file = await readFile(avatarPath);
-        res.status(200).send(avatar_file);
+        const avatar_file = await readFile(ret);
+        res.status(200).json({ avatar: avatar_file });
       } else {
         //头像不存在，创建头像
         const rand_code = Math.round(Math.random() * Math.pow(10, 6));
@@ -184,7 +182,7 @@ router.get(
         }.jpg`;
         await writeFile(newAvatarPath, default_avatar);
         await Avatars.create({ owner: req.userEmail, path: newAvatarPath });
-        res.status(200).send(default_avatar);
+        res.status(200).json({ avatar: default_avatar });
       }
     } catch (error) {
       next(error);
@@ -204,19 +202,32 @@ router.post(
     const avatar_file = req.body.avatar;
     try {
       // 获取头像路径
-      const avatarPath = await Avatars.findAll({
-        attributes: ["path"],
-        where: {
-          owner: {
-            [Op.eq]: req.userEmail,
-          },
-        },
-      })[0];
-      if (avatarPath) {
-        //头像存在，替换头像
+      let sql = "select path from avatars where (avatars.owner= ?)";
+      const avatarPath = await db.sequelize.query(sql, {
+        replacements: [req.userEmail],
+        type: QueryTypes.SELECT,
+      });
+      const ret = avatarPath[0].path;
+      if (ret && ret != "../assert/avatar/default.jpg") {
+        //头像存在，覆盖头像
         await writeFile(avatarPath, avatar_file);
+        res.status(200).json({ msg: "更换成功" });
       } else {
-        res.status(500).json({ errMsg: "头像更新失败" });
+        //头像不存在，创建头像，更新头像路径
+        const rand_code = Math.round(Math.random() * Math.pow(10, 6));
+        const newAvatarPath = `../assert/avatar/${
+          req.userEmail + rand_code
+        }.jpg`;
+        await writeFile(newAvatarPath, avatar_file);
+        await Avatars.update(
+          { path: newAvatarPath },
+          {
+            where: {
+              owner: req.userEmail,
+            },
+          }
+        );
+        res.status(200).json({ msg: "更换成功" });
       }
     } catch (error) {
       next(error);
@@ -309,20 +320,13 @@ router.get(
     res: Response,
     next: NextFunction
   ) => {
+    const { offset, limit } = req.params;
     try {
       //获取所有文章
-      const article_all = await Articles.findAll({
-        attributes: [
-          "owner",
-          "title",
-          "body",
-          "state",
-          "isPublic",
-          "identity_number",
-        ],
-        where: {
-          [Op.and]: [{ owner: req.userEmail }, { deleted: false }],
-        },
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
+      const article_all = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false],
+        type: QueryTypes.SELECT,
       });
       res.status(200).json({ articles: article_all });
     } catch (error) {
@@ -340,29 +344,108 @@ router.get(
     next: NextFunction
   ) => {
     try {
-      //获取所有文章
-      const article_all = await Articles.findAll({
-        attributes: [
-          "owner",
-          "title",
-          "body",
-          "state",
-          "isPublic",
-          "identity_number",
-        ],
-        where: {
-          [Op.and]: [{ owner: req.userEmail }, { deleted: false }],
-        },
+      //获取文章
+      const { identity_number } = req.params;
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.identity_number=?)`;
+      const ret = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false, identity_number],
+        type: QueryTypes.SELECT,
       });
-      res.status(200).json({ articles: article_all });
+      ret[0]
+        ? res.status(200).json({ articles: ret })
+        : res.status(404).json({ errMsg: "内容不存在" });
     } catch (error) {
       next(error);
     }
   }
 );
-//获取我喜欢的文章
+
+//获取收藏的文章
+router.get(
+  "/article/favorite",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { offset, limit } = req.params;
+    try {
+      //获取所有收藏的文章
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?and articles.state= ?) limit ${offset},${limit}`;
+      const favorite_article = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false, "favorite"],
+        type: QueryTypes.SELECT,
+      });
+      res.status(200).json({ articles: favorite_article });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 //获取已删除的文章
-//获取
+router.get(
+  "/article/deleted",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { offset, limit } = req.params;
+    try {
+      //获取所有收藏的文章
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
+      const deleted_article = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, true],
+        type: QueryTypes.SELECT,
+      });
+      res.status(200).json({ articles: deleted_article });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+//搜索文章
+router.get(
+  "/article/search",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { keyword, offset, limit } = req.params;
+    try {
+      //获取符合要求的文章
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.title like ?) limit ${offset},${limit}`;
+      const deleted_article = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false, keyword + "%"],
+        type: QueryTypes.SELECT,
+      });
+      res.status(200).json({ articles: deleted_article });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 //图片存储
+router.post(
+  "/img/save",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { content, isPublic } = req.body;
+    try {
+      res.status(200).json({ path: "" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 //获取图片
 export default router;
