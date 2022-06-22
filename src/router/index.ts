@@ -13,6 +13,7 @@ import { Register } from "../common/type";
 import { Articles, Avatars, CanvasImages, Users } from "../model/mdb_create";
 const { Op } = require("sequelize");
 import { verifyToken } from "../middleware/verify_token";
+import { translate } from "../util/translate";
 const router = express.Router();
 
 const readFile = promisify(fs.readFile);
@@ -541,6 +542,29 @@ router.delete(
         }
       );
       res.status(200).json({ msg: "删除成功" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/translate",
+  // verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { word, from, to } = req.query as {
+      word: string;
+      from: string;
+      to: string;
+    };
+    console.log(word, from, to);
+    try {
+      const result = await translate(word, from, to);
+      res.status(200).json({ result });
     } catch (error) {
       next(error);
     }
