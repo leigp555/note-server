@@ -8,13 +8,18 @@ const { port, host, password, database, username } = config.mysql_config;
 const sequelize = new Sequelize(database, username, password, {
   host: host,
   dialect: "mysql",
+  logging: console.log,
   port,
   pool: {
     max: 50,
     min: 5,
-    idle: 10,
+    acquire: 30000,
+    idle: 10000,
   },
 });
+
+export const db = { sequelize: sequelize };
+db.sequelize = sequelize;
 
 //创建user模型
 export class Users extends Model {}
@@ -31,29 +36,38 @@ Users.init(
     username: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       unique: true,
+      validate: {
+        is: /^[0-9A-Za-z_@/.]{3,20}$/,
+      },
       comment: "用户名",
     },
     email: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "907090585@qq.com",
+      defaultValue: "907090585@qq.com",
       unique: true,
+      isEmail: true,
       comment: "邮箱",
     },
     password: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "123456",
+      defaultValue: "123456",
       comment: "密码",
+      validate: {
+        is: /^[a-zA-Z0-9_-]{6,16}$/,
+      },
     },
     createdAt: {
       type: DataTypes.DATE, //DATE类型自动添加updateAt和createdAt字段
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
     updatedAt: {
       type: DataTypes.DATE, //DATE类型自动添加updateAt和createdAt字段
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
   },
@@ -79,50 +93,53 @@ Articles.init(
     owner: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       comment: "拥有者",
     },
     title: {
       type: DataTypes.STRING(110),
-      allowNull: false,
-      default: "匿名",
+      allowNull: true,
+      defaultValue: "标题",
       comment: "文章标题",
     },
     body: {
       type: DataTypes.STRING(5000),
-      allowNull: false,
-      default: "匿名",
+      allowNull: true,
+      defaultValue: "正文",
       comment: "文章主体",
     },
     state: {
       type: DataTypes.STRING(10),
       allowNull: false,
-      default: "normal",
+      defaultValue: "normal",
       comment: "文章状态",
     },
     identity_number: {
       type: DataTypes.UUID,
       allowNull: false,
+      defaultValueValue: DataTypes.UUIDV4,
       comment: "文章id",
     },
     isPublic: {
       type: DataTypes.BOOLEAN,
-      default: false,
+      defaultValue: false,
       allowNull: false,
       comment: "是否公开",
     },
     deleted: {
       type: DataTypes.BOOLEAN,
-      default: false,
+      defaultValue: false,
       allowNull: false,
       comment: "是否删除",
     },
     createdAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
     updatedAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
   },
@@ -148,22 +165,24 @@ Avatars.init(
     owner: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       comment: "拥有者",
       unique: true,
     },
     path: {
       type: DataTypes.TEXT,
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       comment: "图片内容",
     },
     createdAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
     updatedAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
   },
@@ -189,27 +208,29 @@ CanvasImages.init(
     owner: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       comment: "拥有者",
     },
     path: {
       type: DataTypes.STRING(2000),
       allowNull: false,
-      default: "匿名",
+      defaultValue: "匿名",
       comment: "图片内容",
     },
     isPublic: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      default: false,
+      defaultValue: false,
       comment: "是否公开",
     },
     createdAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
     updatedAt: {
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
   },

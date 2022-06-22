@@ -1,7 +1,9 @@
 const express = require("express");
 const { promisify } = require("util");
+const { QueryTypes } = require("sequelize");
 const fs = require("fs");
-import e, { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import { db } from "../model/mdb_create";
 import { rdb } from "../model/redis_connect";
 import { sign } from "../util/jwt";
 import { jwtSecret } from "../config/jwt_config";
@@ -14,7 +16,6 @@ const router = express.Router();
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
-const unlink = promisify(fs.unlink);
 
 //测试
 router.get("/test/redis", async (req: Request, res: Response) => {
@@ -74,30 +75,24 @@ router.post(
         return;
       }
       //判断用户名是否存在
-      const is_username_save = await Users.findAll({
-        attributes: ["username"],
-        where: {
-          username: {
-            [Op.eq]: username,
-          },
-        },
-      })[0];
-      if (is_username_save) {
+      let sql = `select username from users where users.username= ?`;
+      const is_username_save = await db.sequelize.query(sql, {
+        replacements: [username],
+        type: QueryTypes.SELECT,
+      });
+      if (is_username_save[0]) {
         res.status(400).json({
           errors: { errMsg: "用户名已存在", username: is_username_save },
         });
         return;
       }
       //判断邮箱是否存在
-      const is_email_save = await Users.findAll({
-        attributes: ["email"],
-        where: {
-          email: {
-            [Op.eq]: email,
-          },
-        },
-      })[0];
-      if (is_email_save) {
+      sql = `select email from users where users.email= ?`;
+      const is_email_save = await db.sequelize.query(sql, {
+        replacements: [email],
+        type: QueryTypes.SELECT,
+      });
+      if (is_email_save[0]) {
         res.status(400).json({
           errors: { errMsg: "邮箱已存在", email: is_email_save },
         });
@@ -119,34 +114,34 @@ router.post(
     try {
       //邮箱登录
       if (reg.test(username)) {
-        const user = await Users.findAll({
-          attributes: ["username", "email"],
-          where: {
-            [Op.and]: [{ email: username }, { password }],
-          },
-        })[0];
-        if (user) {
+        let sql = `select username,email from users where (users.email= ? and users.password= ?)`;
+        const user = await db.sequelize.query(sql, {
+          replacements: [username, password],
+          type: QueryTypes.SELECT,
+        });
+        if (user[0]) {
           const token = await sign({ user: username.email }, jwtSecret, {
             expiresIn: "2h",
           });
-          res.status(200).json({ user: username, token: "Bearer" + token });
+          res
+            .status(200)
+            .json({ user: user[0].username, token: "Bearer:" + token });
         } else {
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
-        return;
       } else {
         //用户名登陆
-        const user = await Users.findAll({
-          attributes: ["username", "email"],
-          where: {
-            [Op.and]: [{ username }, { password }],
-          },
-        })[0];
-        if (user) {
+        let sql =
+          "select username,email from users where (users.username= ? and users.password= ?)";
+        const user = await db.sequelize.query(sql, {
+          replacements: [username, password],
+          type: QueryTypes.SELECT,
+        });
+        if (user[0]) {
           const token = await sign({ user: user.email }, jwtSecret, {
             expiresIn: "2h",
           });
-          res.status(200).json({ user: username, token: "Bearer" + token });
+          res.status(200).json({ user: username, token: "Bearer:" + token });
         } else {
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
@@ -237,14 +232,18 @@ router.post(
     res: Response,
     next: NextFunction
   ) => {
-    const { owner, title, body, isPublic, state } = req.body;
+    const { title, body, isPublic, state } = req.body;
     try {
       //向数据库中插入数据
-      Articles.create({ owner, title, body, isPublic, state });
+      await Articles.create({
+        owner: req.userEmail,
+        title,
+        body,
+        isPublic,
+        state,
+      });
       //返回新创建的文章
-      res
-        .status(200)
-        .json({ article: { owner, title, body, isPublic, state } });
+      res.status(200).json({ article: { title, body, isPublic, state } });
     } catch (error) {
       next(error);
     }
@@ -267,7 +266,7 @@ router.delete(
         { deleted: true },
         {
           where: {
-            identity_number,
+            [Op.and]: [{ identity_number }, { owner: req.userEmail }],
           },
         }
       );
@@ -279,7 +278,91 @@ router.delete(
 );
 
 //修改文章
-//查询文章
+router.patch(
+  "/article",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { identity_number, owner, ...rest } = req.body;
+    try {
+      //修改文章内容
+      await Articles.update(rest, {
+        where: {
+          [Op.and]: [{ identity_number }, { owner: req.userEmail }],
+        },
+      });
+      res.status(200).json({ msg: "修改成功" });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//查询所有文章
+router.get(
+  "/article/all",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      //获取所有文章
+      const article_all = await Articles.findAll({
+        attributes: [
+          "owner",
+          "title",
+          "body",
+          "state",
+          "isPublic",
+          "identity_number",
+        ],
+        where: {
+          [Op.and]: [{ owner: req.userEmail }, { deleted: false }],
+        },
+      });
+      res.status(200).json({ articles: article_all });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//通过文章identity_number查询文章
+router.get(
+  "/article/identify",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      //获取所有文章
+      const article_all = await Articles.findAll({
+        attributes: [
+          "owner",
+          "title",
+          "body",
+          "state",
+          "isPublic",
+          "identity_number",
+        ],
+        where: {
+          [Op.and]: [{ owner: req.userEmail }, { deleted: false }],
+        },
+      });
+      res.status(200).json({ articles: article_all });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//获取我喜欢的文章
+//获取已删除的文章
+//获取
 //图片存储
 //获取图片
 export default router;

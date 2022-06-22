@@ -8,7 +8,7 @@ export const verifyToken = async (
   next: NextFunction
 ) => {
   let token = req.headers.authorization;
-  token = token ? token.split("Bearer ")[1] : undefined;
+  token = token ? token.split("Bearer:")[1] : undefined;
   if (!token) {
     res.status(401).json({ errMsg: "操作失败，请先申情权限" });
     return;
