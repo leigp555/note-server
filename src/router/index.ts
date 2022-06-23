@@ -1,3 +1,5 @@
+import {host_url} from "../config/development_config";
+
 const express = require("express");
 const { promisify } = require("util");
 import {Base64} from 'js-base64';
@@ -204,16 +206,10 @@ router.get(
       const ret = avatarPath[0];
       if (ret) {
         //头像存在
-        const avatar_file = await readFile(path.resolve(__dirname, ret.path));
-        res.setHeader("Content-Type", "image/png");
-        let str = `data:image/jpg;base64,${Base64.encode(avatar_file)}`.replace(/[\r\n]/g, '').replace(/=+$/,'')
-        res.status(200).send(str);
+        res.status(200).json({avatar_url:`${host_url}/${ret.path}`});
       } else {
         //头像不存在，使用默认头像
-        const default_avatar = await readFile(
-          path.resolve(__dirname, "../assert/avatar/default.jpg")
-        );
-        res.status(200).send("data:image/jpeg;base64,"+Base64.encode(default_avatar).replace(/=+$/,''));
+        res.status(200).json({avatar_url:`${host_url}/3547995268.jpg`})
       }
     } catch (error) {
       next(error);
@@ -238,18 +234,18 @@ router.post(
         replacements: [req.userEmail],
         type: QueryTypes.SELECT,
       });
-      const ret = avatarPath[0].path;
-      if (ret && ret != "../assert/avatar/3547995268.jpg") {
+      const ret = avatarPath[0];
+      if (ret && ret != "3547995268.jpg") {
         //头像存在，覆盖头像，路径不变
-        await writeFile(avatarPath, avatar_file);
+        await writeFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`), avatar_file);
         res.status(200).json({ msg: "更换成功" });
       } else {
         //头像不存在，创建头像，更新头像路径
         const rand_code = Math.round(Math.random() * Math.pow(10, 10));
-        const newAvatarPath = `../assert/avatar/${rand_code}.jpg`;
+        const newAvatarPath =path.resolve(__dirname,`../assert/avatar/${rand_code}.jpg`) ;
         await writeFile(newAvatarPath, avatar_file);
         await Avatars.update(
-          { path: newAvatarPath },
+          { path: `${rand_code}.jpg` },
           {
             where: {
               owner: req.userEmail,
