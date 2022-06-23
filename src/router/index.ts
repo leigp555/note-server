@@ -188,7 +188,7 @@ router.get(
 //获取头像
 router.get(
   "/avatar",
-  // verifyToken,
+  verifyToken,
   async (
     req: Request & { userEmail: string },
     res: Response,
@@ -198,38 +198,22 @@ router.get(
       // 获取头像路径
       let sql = "select path from avatars where (avatars.owner= ?)";
       const avatarPath = await db.sequelize.query(sql, {
-        replacements: ['122974945@qq.com'],
+        replacements: [req.userEmail],
         type: QueryTypes.SELECT,
       });
       const ret = avatarPath[0];
       if (ret) {
         //头像存在
-        // const avatar_file = await readFile(path.resolve(__dirname, ret.path));
-        // console.log(avatar_file);
-        // res.status(200).send({ avatar: avatar_file });
-        //res.set("content-type", "image/jpeg");
-        const cs = fs.createReadStream(path.resolve(__dirname, ret.path));
-        const responseData: Buffer[] = [];
-        cs.on("data", (chunk: Buffer) => {
-          responseData.push(chunk);
-        });
-        cs.on("end", () => {
-          const finalData = responseData[0];
-          //@ts-ignore
-          res.status(200).send("data:image/jpeg;base64,"+Base64.encode(finalData));
-        });
+        const avatar_file = await readFile(path.resolve(__dirname, ret.path));
+        res.setHeader("Content-Type", "image/png");
+        let str = `data:image/jpg;base64,${Base64.encode(avatar_file)}`.replace(/[\r\n]/g, '').replace(/=+$/,'')
+        res.status(200).send(str);
       } else {
-        //头像不存在，创建头像
-        const rand_code = Math.round(Math.random() * Math.pow(10, 6));
+        //头像不存在，使用默认头像
         const default_avatar = await readFile(
           path.resolve(__dirname, "../assert/avatar/default.jpg")
         );
-        const newAvatarPath = `../assert/avatar/${
-          req.userEmail + rand_code
-        }.jpg`;
-        await writeFile(path.resolve(__dirname, newAvatarPath), default_avatar);
-        await Avatars.create({ owner: req.userEmail, path: newAvatarPath });
-        res.status(200).send({ avatar: default_avatar });
+        res.status(200).send("data:image/jpeg;base64,"+Base64.encode(default_avatar).replace(/=+$/,''));
       }
     } catch (error) {
       next(error);
@@ -255,16 +239,14 @@ router.post(
         type: QueryTypes.SELECT,
       });
       const ret = avatarPath[0].path;
-      if (ret && ret != "../assert/avatar/default.jpg") {
-        //头像存在，覆盖头像
+      if (ret && ret != "../assert/avatar/3547995268.jpg") {
+        //头像存在，覆盖头像，路径不变
         await writeFile(avatarPath, avatar_file);
         res.status(200).json({ msg: "更换成功" });
       } else {
         //头像不存在，创建头像，更新头像路径
-        const rand_code = Math.round(Math.random() * Math.pow(10, 6));
-        const newAvatarPath = `../assert/avatar/${
-          req.userEmail + rand_code
-        }.jpg`;
+        const rand_code = Math.round(Math.random() * Math.pow(10, 10));
+        const newAvatarPath = `../assert/avatar/${rand_code}.jpg`;
         await writeFile(newAvatarPath, avatar_file);
         await Avatars.update(
           { path: newAvatarPath },

@@ -21,6 +21,8 @@ function shouldCompress(req: Request, res: Response) {
   }
   return compression.filter(req, res);
 }
+//静态资源托管
+app.use ('/static',express.static(__dirname + '/assert'));
 
 //统一处理options请求
 app.options("*", cors(corsOptions));
