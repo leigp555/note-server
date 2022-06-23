@@ -121,8 +121,9 @@ router.post(
           replacements: [username, password],
           type: QueryTypes.SELECT,
         });
-        if (user[0]) {
-          const token = await sign({ user: username.email }, jwtSecret, {
+        const ret = user[0];
+        if (ret) {
+          const token = await sign({ user: ret.email }, jwtSecret, {
             expiresIn: "2h",
           });
           res
@@ -139,8 +140,9 @@ router.post(
           replacements: [username, password],
           type: QueryTypes.SELECT,
         });
-        if (user[0]) {
-          const token = await sign({ user: user.email }, jwtSecret, {
+        const ret = user[0];
+        if (ret) {
+          const token = await sign({ user: ret.email }, jwtSecret, {
             expiresIn: "2h",
           });
           res.status(200).json({ user: username, token: "Bearer:" + token });
@@ -150,6 +152,33 @@ router.post(
       }
     } catch (err) {
       next(err);
+    }
+  }
+);
+
+//根据token获取用户信息
+router.get(
+  "/user/info",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      let sql = `select username,email from users where (users.email= ?)`;
+      const user = await db.sequelize.query(sql, {
+        replacements: [req.userEmail],
+        type: QueryTypes.SELECT,
+      });
+      const ret = user[0];
+      if (ret) {
+        res.status(200).json(ret);
+      } else {
+        res.status(400).json({ errors: { errMsg: "请先登录或注册" } });
+      }
+    } catch (error) {
+      next(error);
     }
   }
 );
