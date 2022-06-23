@@ -116,7 +116,7 @@ Articles.init(
     },
     identity_number: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       defaultValueValue: DataTypes.UUIDV4,
       comment: "文章id",
     },

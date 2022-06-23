@@ -1,5 +1,7 @@
 const express = require("express");
 const { promisify } = require("util");
+import {Base64} from 'js-base64';
+const path = require("path");
 const { QueryTypes } = require("sequelize");
 const fs = require("fs");
 import { NextFunction, Request, Response } from "express";
@@ -186,7 +188,7 @@ router.get(
 //获取头像
 router.get(
   "/avatar",
-  verifyToken,
+  // verifyToken,
   async (
     req: Request & { userEmail: string },
     res: Response,
@@ -196,24 +198,38 @@ router.get(
       // 获取头像路径
       let sql = "select path from avatars where (avatars.owner= ?)";
       const avatarPath = await db.sequelize.query(sql, {
-        replacements: [req.userEmail],
+        replacements: ['122974945@qq.com'],
         type: QueryTypes.SELECT,
       });
-      const ret = avatarPath[0].path;
+      const ret = avatarPath[0];
       if (ret) {
         //头像存在
-        const avatar_file = await readFile(ret);
-        res.status(200).json({ avatar: avatar_file });
+        // const avatar_file = await readFile(path.resolve(__dirname, ret.path));
+        // console.log(avatar_file);
+        // res.status(200).send({ avatar: avatar_file });
+        //res.set("content-type", "image/jpeg");
+        const cs = fs.createReadStream(path.resolve(__dirname, ret.path));
+        const responseData: Buffer[] = [];
+        cs.on("data", (chunk: Buffer) => {
+          responseData.push(chunk);
+        });
+        cs.on("end", () => {
+          const finalData = responseData[0];
+          //@ts-ignore
+          res.status(200).send("data:image/jpeg;base64,"+Base64.encode(finalData));
+        });
       } else {
         //头像不存在，创建头像
         const rand_code = Math.round(Math.random() * Math.pow(10, 6));
-        const default_avatar = await readFile("../assert/avatar/default.jpg");
+        const default_avatar = await readFile(
+          path.resolve(__dirname, "../assert/avatar/default.jpg")
+        );
         const newAvatarPath = `../assert/avatar/${
           req.userEmail + rand_code
         }.jpg`;
-        await writeFile(newAvatarPath, default_avatar);
+        await writeFile(path.resolve(__dirname, newAvatarPath), default_avatar);
         await Avatars.create({ owner: req.userEmail, path: newAvatarPath });
-        res.status(200).json({ avatar: default_avatar });
+        res.status(200).send({ avatar: default_avatar });
       }
     } catch (error) {
       next(error);
@@ -283,6 +299,7 @@ router.post(
         body,
         isPublic,
         state,
+        identity_number: uuidv4(),
       });
       //返回新创建的文章
       res.status(200).json({ article: { title, body, isPublic, state } });

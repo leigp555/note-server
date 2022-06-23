@@ -14,9 +14,7 @@ export const verifyToken = async (
     return;
   }
   try {
-    console.log(token);
     const decodeToken = await verify(token, jwtSecret);
-    console.log(decodeToken);
     req.userEmail = decodeToken.user;
     next();
   } catch (err) {

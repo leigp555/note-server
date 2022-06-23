@@ -17,6 +17,7 @@
     "express-validator": "^6.14.1",
     "ibm_db": "^2.8.1",
     "ioredis": "^5.0.6",
+    "js-base64": "^3.7.2",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
