@@ -187,7 +187,7 @@ router.get(
   }
 );
 
-//获取头像
+//获取头像的外链url以及头像base64文件
 router.get(
   "/avatar",
   verifyToken,
@@ -206,10 +206,12 @@ router.get(
       const ret = avatarPath[0];
       if (ret) {
         //头像存在
-        res.status(200).json({avatar_url:`${host_url}/${ret.path}`});
+        const avatarFile=await readFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`))
+        res.status(200).json({avatar_url:`${host_url}/${ret.path}`,avatar_base64:`data:image/jpeg;base64,${Base64.encode(avatarFile)}`});
       } else {
         //头像不存在，使用默认头像
-        res.status(200).json({avatar_url:`${host_url}/3547995268.jpg`})
+        const avatarFile=await readFile(path.resolve(__dirname,`../assert/avatar/3547995268.jpg`))
+        res.status(200).json({avatar_url:`${host_url}/3547995268.jpg`,avatar_base64:`data:image/jpeg;base64,${Base64.encode(avatarFile)}`});
       }
     } catch (error) {
       next(error);
@@ -217,16 +219,20 @@ router.get(
   }
 );
 
+
+
 //更换头像
 router.post(
-  "/update/avatar",
+  "/avatar/update",
   verifyToken,
   async (
     req: Request & { userEmail: string },
     res: Response,
     next: NextFunction
   ) => {
-    const avatar_file = req.body.avatar;
+    const {avatar_file} = req.body;
+    const avatar_base64=avatar_file.split(',')[1].replace(/=/,'')
+    const avatar_buffer = new Buffer(avatar_base64, 'base64')
     try {
       // 获取头像路径
       let sql = "select path from avatars where (avatars.owner= ?)";
@@ -237,22 +243,22 @@ router.post(
       const ret = avatarPath[0];
       if (ret && ret != "3547995268.jpg") {
         //头像存在，覆盖头像，路径不变
-        await writeFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`), avatar_file);
-        res.status(200).json({ msg: "更换成功" });
+        await writeFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`), avatar_buffer);
+        res.status(200).json({ msg: "更换成功",avatar_url:`${host_url}/${ret.path}`});
       } else {
         //头像不存在，创建头像，更新头像路径
         const rand_code = Math.round(Math.random() * Math.pow(10, 10));
         const newAvatarPath =path.resolve(__dirname,`../assert/avatar/${rand_code}.jpg`) ;
-        await writeFile(newAvatarPath, avatar_file);
-        await Avatars.update(
-          { path: `${rand_code}.jpg` },
+        await writeFile(newAvatarPath, avatar_buffer);
+        await Avatars.create(
+          {owner:req.userEmail, path: `${rand_code}.jpg` },
           {
             where: {
               owner: req.userEmail,
             },
           }
         );
-        res.status(200).json({ msg: "更换成功" });
+        res.status(200).json({ msg: "更换成功",avatar_url:`${host_url}/${rand_code}.jpg` });
       }
     } catch (error) {
       next(error);

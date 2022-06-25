@@ -6,23 +6,21 @@ const app: express.Application = express();
 import { error_handle } from "./middleware/error_handle";
 import router from "./router/index";
 import { corsOptions } from "./config/cors_config";
-import { Request, Response } from "express";
+
 
 //express自带中间件的使用
 app.use(morgan(":method  :status  :url   -:response-time ms  ")); //日志
-app.use(express.urlencoded()); //解析请求体
-app.use(express.json()); //解析请求体
+
+//将请求体大小限制进行修改
+app.use(express.json({limit: '25mb'}));
+app.use(express.urlencoded({limit: '25mb', extended: true}));
 
 //开启gzip
-app.use(compression({ filter: shouldCompress }));
-function shouldCompress(req: Request, res: Response) {
-  if (req.headers["x-no-compression"]) {
-    return false;
-  }
-  return compression.filter(req, res);
-}
+app.use(compression());
+
 //静态资源托管
 app.use ('/static',express.static(__dirname + '/assert'));
+
 
 //统一处理options请求
 app.options("*", cors(corsOptions));
