@@ -346,8 +346,8 @@ router.post(
 );
 
 //删除文章
-router.delete(
-  "/article",
+router.post(
+  "/article/delete",
   verifyToken,
   async (
     req: Request & { userEmail: string },
@@ -357,14 +357,11 @@ router.delete(
     const { identity_number } = req.body;
     try {
       //在数据库中标记文章已删除
-      await Articles.update(
-        { deleted: true },
-        {
-          where: {
-            [Op.and]: [{ identity_number }, { owner: req.userEmail }],
-          },
-        }
-      );
+      await Articles.destroy({
+        where: {
+          [Op.and]: [{ identity_number }, { owner: req.userEmail }],
+        },
+      });
       res.status(200).json({ msg: "操作成功" });
     } catch (error) {
       next(error);
