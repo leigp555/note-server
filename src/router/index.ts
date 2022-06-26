@@ -269,7 +269,8 @@ router.post(
     next: NextFunction
   ) => {
     const { avatar_file } = req.body;
-    const avatar_buffer = new Buffer(avatar_file, "base64");
+    const avatar_base64 = avatar_file.split(",")[1];
+    const avatar_buffer = new Buffer(avatar_base64, "base64");
     try {
       // 获取头像路径
       let sql = "select path from avatars where (avatars.owner= ?)";
