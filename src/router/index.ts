@@ -324,6 +324,7 @@ router.post(
     next: NextFunction
   ) => {
     const { title, body, isPublic, state } = req.body;
+    const identity_number = uuidv4();
     try {
       //向数据库中插入数据
       await Articles.create({
@@ -332,10 +333,12 @@ router.post(
         body,
         isPublic,
         state,
-        identity_number: uuidv4(),
+        identity_number,
       });
       //返回新创建的文章
-      res.status(200).json({ article: { title, body, isPublic, state } });
+      res
+        .status(200)
+        .json({ article: { title, body, isPublic, state, identity_number } });
     } catch (error) {
       next(error);
     }
