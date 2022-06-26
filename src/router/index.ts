@@ -1,8 +1,8 @@
-import {host_url} from "../config/development_config";
+import { host_url } from "../config/development_config";
 
 const express = require("express");
 const { promisify } = require("util");
-import {Base64} from 'js-base64';
+import { Base64 } from "js-base64";
 const path = require("path");
 const { QueryTypes } = require("sequelize");
 const fs = require("fs");
@@ -53,12 +53,17 @@ router.post(
   "/securityCode",
   async (req: Request, res: Response, next: NextFunction) => {
     const user_email: string = req.body.email;
+    const type: string = req.body.type;
     try {
       const security_code = Math.round(
         Math.random() * Math.pow(10, 6)
       ).toString();
       await send_email(user_email, security_code);
-      await rdb.setex(`${user_email}:${security_code}`, 180, security_code);
+      await rdb.setex(
+        `${type + user_email}:${security_code}`,
+        180,
+        security_code
+      );
       res.send({ msg: "验证码已发送" });
     } catch (err: any) {
       next(err);
@@ -73,7 +78,7 @@ router.post(
     const { username, email, password, securityCode } = req.body as Register;
     try {
       //判断验证码是否正确
-      const redis_code = await rdb.get(`${email}:${securityCode}`);
+      const redis_code = await rdb.get(`${"register" + email}:${securityCode}`);
       if (!redis_code) {
         res.status(400).json({
           errors: { errMsg: "验证码错误", security_code: redis_code },
@@ -130,9 +135,11 @@ router.post(
           const token = await sign({ user: ret.email }, jwtSecret, {
             expiresIn: "2h",
           });
-          res
-            .status(200)
-            .json({ user: user[0].username, token: "Bearer:" + token });
+          res.status(200).json({
+            username: ret.username,
+            email: ret.email,
+            token: "Bearer:" + token,
+          });
         } else {
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
@@ -154,6 +161,37 @@ router.post(
           res.status(400).json({ errMsg: "用户名或密码不正确" });
         }
       }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+//密码重置
+router.post(
+  "/resetPass",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email, password, securityCode } = req.body as Register;
+    try {
+      //判断验证码是否正确
+      const redis_code = await rdb.get(
+        `${"resetPass" + email}:${securityCode}`
+      );
+      if (!redis_code) {
+        res.status(400).json({
+          errors: { errMsg: "验证码错误", security_code: redis_code },
+        });
+        return;
+      }
+      await Users.update(
+        { password },
+        {
+          where: {
+            email,
+          },
+        }
+      );
+      res.status(200).json({ msg: "重置成功" });
     } catch (err) {
       next(err);
     }
@@ -206,20 +244,20 @@ router.get(
       const ret = avatarPath[0];
       if (ret) {
         //头像存在
-        const avatarFile=await readFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`))
-        res.status(200).json({avatar_url:`${host_url}/${ret.path}`,avatar_base64:`data:image/jpeg;base64,${Base64.encode(avatarFile)}`});
+        res.status(200).json({
+          avatar_url: `${host_url}/${ret.path}`,
+        });
       } else {
         //头像不存在，使用默认头像
-        const avatarFile=await readFile(path.resolve(__dirname,`../assert/avatar/3547995268.jpg`))
-        res.status(200).json({avatar_url:`${host_url}/3547995268.jpg`,avatar_base64:`data:image/jpeg;base64,${Base64.encode(avatarFile)}`});
+        res.status(200).json({
+          avatar_url: `${host_url}/3547995268.jpg`,
+        });
       }
     } catch (error) {
       next(error);
     }
   }
 );
-
-
 
 //更换头像
 router.post(
@@ -230,9 +268,8 @@ router.post(
     res: Response,
     next: NextFunction
   ) => {
-    const {avatar_file} = req.body;
-    const avatar_base64=avatar_file.split(',')[1].replace(/=/,'')
-    const avatar_buffer = new Buffer(avatar_base64, 'base64')
+    const { avatar_file } = req.body;
+    const avatar_buffer = new Buffer(avatar_file, "base64");
     try {
       // 获取头像路径
       let sql = "select path from avatars where (avatars.owner= ?)";
@@ -243,22 +280,33 @@ router.post(
       const ret = avatarPath[0];
       if (ret && ret != "3547995268.jpg") {
         //头像存在，覆盖头像，路径不变
-        await writeFile(path.resolve(__dirname,`../assert/avatar/${ret.path}`), avatar_buffer);
-        res.status(200).json({ msg: "更换成功",avatar_url:`${host_url}/${ret.path}`});
+        await writeFile(
+          path.resolve(__dirname, `../assert/avatar/${ret.path}`),
+          avatar_buffer
+        );
+        res
+          .status(200)
+          .json({ msg: "更换成功", avatar_url: `${host_url}/${ret.path}` });
       } else {
         //头像不存在，创建头像，更新头像路径
         const rand_code = Math.round(Math.random() * Math.pow(10, 10));
-        const newAvatarPath =path.resolve(__dirname,`../assert/avatar/${rand_code}.jpg`) ;
+        const newAvatarPath = path.resolve(
+          __dirname,
+          `../assert/avatar/${rand_code}.jpg`
+        );
         await writeFile(newAvatarPath, avatar_buffer);
         await Avatars.create(
-          {owner:req.userEmail, path: `${rand_code}.jpg` },
+          { owner: req.userEmail, path: `${rand_code}.jpg` },
           {
             where: {
               owner: req.userEmail,
             },
           }
         );
-        res.status(200).json({ msg: "更换成功",avatar_url:`${host_url}/${rand_code}.jpg` });
+        res.status(200).json({
+          msg: "更换成功",
+          avatar_url: `${host_url}/${rand_code}.jpg`,
+        });
       }
     } catch (error) {
       next(error);
@@ -508,7 +556,7 @@ router.get(
       const ret = identity_image[0];
       if (ret) {
         const imgFile = await readFile(ret.path);
-        res.status(200).json({ img: imgFile });
+        res.status(200).json({ imgBase64: imgFile });
       } else {
         res.status(404).json({ errMsg: "内容不存在" });
       }
