@@ -1,4 +1,4 @@
-import { host_url } from "../config/development_config";
+import { host_canvas, host_url } from "../config/development_config";
 
 const express = require("express");
 const { promisify } = require("util");
@@ -616,17 +616,22 @@ router.post(
     next: NextFunction
   ) => {
     const { content, isPublic } = req.body;
+    const imgFile = new Buffer(content.split(",")[1], "base64");
     try {
       const random_code = uuidv4();
-      const newAvatarPath = `../assert/canvas/${random_code}.jpg`;
-      await writeFile(newAvatarPath, content);
+      const newAvatarPath = path.resolve(
+        __dirname,
+        `../assert/canvas/${random_code}.jpg`
+      );
+      await writeFile(newAvatarPath, imgFile);
       await CanvasImages.create({
         owner: req.userEmail,
-        path: newAvatarPath,
+        path: `${host_canvas}/${random_code}.jpg`,
+        deleted: false,
         isPublic,
         identity_number: random_code,
       });
-      res.status(200).json({ imgId: random_code });
+      res.status(200).json({ img_url: `${host_canvas}/${random_code}.jpg` });
     } catch (error) {
       next(error);
     }
@@ -661,7 +666,8 @@ router.get(
     }
   }
 );
-//获取所有的图片
+
+//获取所有的图片外链
 router.get(
   "/img/all",
   verifyToken,
@@ -673,20 +679,14 @@ router.get(
     try {
       //获取所有图片信息
       const { offset, limit } = req.query;
-      let sql = `select owner,identity_number,path from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ?) limit ${offset},${limit}`;
+      let sql = `select owner,identity_number,path,createdAt,updatedAt from canvasImages  where (canvasImages.owner= ? and canvasImages.deleted= ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const all_image = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false],
         type: QueryTypes.SELECT,
       });
       const ret = all_image[0];
       if (ret) {
-        let images: string[] = [];
-        type Image = { owner: string; identity_number: string; path: string };
-        all_image.forEach(async (item: Image) => {
-          const imgFile = await readFile(item.path);
-          images.push(imgFile);
-        });
-        res.status(200).json({ images });
+        res.status(200).json({ images: all_image });
       } else {
         res.status(404).json({ errMsg: "内容不存在" });
       }

@@ -212,7 +212,7 @@ CanvasImages.init(
       comment: "拥有者",
     },
     path: {
-      type: DataTypes.STRING(2000),
+      type: DataTypes.TEXT,
       allowNull: true,
       comment: "图片内容",
     },
@@ -223,8 +223,9 @@ CanvasImages.init(
       comment: "是否删除",
     },
     identity_number: {
-      type: DataTypes.STRING(30),
-      allowNull: false,
+      type: DataTypes.UUID,
+      allowNull: true,
+      defaultValueValue: DataTypes.UUIDV4,
       comment: "图片id",
     },
     isPublic: {
