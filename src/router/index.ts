@@ -404,17 +404,89 @@ router.get(
     const { offset, limit } = req.query;
     try {
       //获取所有文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
+      let sql = `select title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ? and articles.deleted= ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const article_all = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false],
         type: QueryTypes.SELECT,
       });
+
       res.status(200).json({ articles: article_all });
     } catch (error) {
       next(error);
     }
   }
 );
+
+//查询所有文章的数量
+router.get(
+  "/article/num/:kind",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      //获取所有文章总数
+      interface Kind {
+        kind: "allArticle" | "favorite" | "deleted" | "draft";
+      }
+      const kind = req.params.kind;
+      if (kind === "allArticle") {
+        //获取所有文章的总数
+        let sql = `SELECT COUNT(1) FROM articles WHERE articles.owner= ? and deleted= ? `;
+        const article_num = await db.sequelize.query(sql, {
+          replacements: [req.userEmail, false],
+          type: QueryTypes.SELECT,
+        });
+        if (article_num && article_num[0]) {
+          res.status(200).json({ total: article_num[0]["COUNT(1)"] });
+        } else {
+          res.status(200).json({ total: 0 });
+        }
+      } else if (kind === "favorite") {
+        //获取收藏夹的总数
+        let sql = `SELECT COUNT(1) FROM articles WHERE articles.owner= ? and deleted= ? and state= ? `;
+        const article_num = await db.sequelize.query(sql, {
+          replacements: [req.userEmail, false, "favorite"],
+          type: QueryTypes.SELECT,
+        });
+        if (article_num && article_num[0]) {
+          res.status(200).json({ total: article_num[0]["COUNT(1)"] });
+        } else {
+          res.status(200).json({ total: 0 });
+        }
+      } else if (kind === "draft") {
+        //获取草稿总数
+        let sql = `SELECT COUNT(1) FROM articles WHERE articles.owner= ? and deleted= ? and state= ? `;
+        const article_num = await db.sequelize.query(sql, {
+          replacements: [req.userEmail, false, "draft"],
+          type: QueryTypes.SELECT,
+        });
+        if (article_num && article_num[0]) {
+          res.status(200).json({ total: article_num[0]["COUNT(1)"] });
+        } else {
+          res.status(200).json({ total: 0 });
+        }
+      } else if (kind === "deleted") {
+        //获取回收站的总数
+        let sql = `SELECT COUNT(1) FROM articles WHERE articles.owner= ? and deleted= ?  `;
+        const article_num = await db.sequelize.query(sql, {
+          replacements: [req.userEmail, true],
+          type: QueryTypes.SELECT,
+        });
+        if (article_num && article_num[0]) {
+          res.status(200).json({ total: article_num[0]["COUNT(1)"] });
+        } else {
+          res.status(200).json({ total: 0 });
+        }
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 //通过文章identity_number查询文章
 router.get(
   "/article/identify",
@@ -427,7 +499,7 @@ router.get(
     try {
       //获取文章
       const { identity_number } = req.query;
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ?  and articles.identity_number=?)`;
+      let sql = `select owner, title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ?  and articles.identity_number=?)`;
       const ret = await db.sequelize.query(sql, {
         replacements: [req.userEmail, identity_number],
         type: QueryTypes.SELECT,
@@ -453,7 +525,7 @@ router.get(
     const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) limit ${offset},${limit}`;
+      let sql = `select owner, title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const favorite_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, "favorite"],
         type: QueryTypes.SELECT,
@@ -476,7 +548,7 @@ router.get(
     const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) limit ${offset},${limit}`;
+      let sql = `select owner, title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const draft_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, "draft"],
         type: QueryTypes.SELECT,
@@ -499,7 +571,7 @@ router.get(
     const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?) limit ${offset},${limit}`;
+      let sql = `select owner, title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ? and articles.deleted= ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const deleted_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, true],
         type: QueryTypes.SELECT,
@@ -523,7 +595,7 @@ router.get(
     const { keyword, offset, limit } = req.query;
     try {
       //获取符合要求的文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.title like ?) limit ${offset},${limit}`;
+      let sql = `select owner, title, body, state, isPublic, identity_number,createdAt,updatedAt from articles where (articles.owner= ? and articles.deleted= ? and articles.title like ?) ORDER BY createdAt DESC limit ${offset},${limit}`;
       const search_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, keyword + "%"],
         type: QueryTypes.SELECT,
