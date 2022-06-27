@@ -356,7 +356,7 @@ router.post(
   ) => {
     const { identity_number } = req.body;
     try {
-      //在数据库中标记文章已删除
+      //在数据库中彻底删除文章
       await Articles.destroy({
         where: {
           [Op.and]: [{ identity_number }, { owner: req.userEmail }],
@@ -427,9 +427,9 @@ router.get(
     try {
       //获取文章
       const { identity_number } = req.query;
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.identity_number=?)`;
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ?  and articles.identity_number=?)`;
       const ret = await db.sequelize.query(sql, {
-        replacements: [req.userEmail, false, identity_number],
+        replacements: [req.userEmail, identity_number],
         type: QueryTypes.SELECT,
       });
       ret[0]
@@ -453,12 +453,35 @@ router.get(
     const { offset, limit } = req.query;
     try {
       //获取所有收藏的文章
-      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ?and articles.state= ?) limit ${offset},${limit}`;
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) limit ${offset},${limit}`;
       const favorite_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, "favorite"],
         type: QueryTypes.SELECT,
       });
       res.status(200).json({ articles: favorite_article });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+//获取草稿
+router.get(
+  "/article/draft",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { offset, limit } = req.query;
+    try {
+      //获取所有收藏的文章
+      let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.state= ?) limit ${offset},${limit}`;
+      const draft_article = await db.sequelize.query(sql, {
+        replacements: [req.userEmail, false, "draft"],
+        type: QueryTypes.SELECT,
+      });
+      res.status(200).json({ articles: draft_article });
     } catch (error) {
       next(error);
     }
@@ -501,11 +524,11 @@ router.get(
     try {
       //获取符合要求的文章
       let sql = `select owner, title, body, state, isPublic, identity_number from articles where (articles.owner= ? and articles.deleted= ? and articles.title like ?) limit ${offset},${limit}`;
-      const deleted_article = await db.sequelize.query(sql, {
+      const search_article = await db.sequelize.query(sql, {
         replacements: [req.userEmail, false, keyword + "%"],
         type: QueryTypes.SELECT,
       });
-      res.status(200).json({ articles: deleted_article });
+      res.status(200).json({ articles: search_article });
     } catch (error) {
       next(error);
     }
