@@ -34,7 +34,7 @@ export const translate = (word: string, from: string, to: string) => {
         if (obj.error_code) {
           reject(obj.error_msg);
         } else {
-          resolve(obj.trans_result[0].dst);
+          if (obj.trans_result[0].dst) resolve(obj.trans_result[0].dst);
         }
       });
     });

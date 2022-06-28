@@ -759,10 +759,16 @@ router.get(
     const { location } = req.query as { location: string };
     try {
       if (location) {
-        const result = await getWeather(location);
-        res.status(200).json({ result });
+        const result = (await getWeather(location)) as {
+          now: { text: string; temperature: string };
+        };
+        if (result.now.text && result.now.temperature) {
+          res.status(200).json({ result });
+        } else {
+          res.status(400).json({ errMsg: "暂不支持该地区天气查询" });
+        }
       } else {
-        res.status(400).json({ result: [] });
+        res.status(400).json({ errMsg: "请填写城市名" });
       }
     } catch (error) {
       next(error);

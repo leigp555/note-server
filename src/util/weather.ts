@@ -4,7 +4,7 @@ const querystring = require("querystring");
 
 //https://api.seniverse.com/v3/weather/now.json?key=SDi6BpkMusDpqLf3l&location=hangzhou&language=zh-Hans&unit=c
 //https://api.seniverse.com/v3/weather/now.json?key=SDi6BpkMusDpqLf3l&location=hangzhou&language=zh-Hans&unit=c
-export const getWeather = (location: string) => {
+export const getWeather = (location = "hangzhou") => {
   const query = querystring.stringify({
     key: "SDi6BpkMusDpqLf3l",
     location,
@@ -27,11 +27,11 @@ export const getWeather = (location: string) => {
         const string = Buffer.concat(arr).toString();
         let obj;
         try {
-          obj = JSON.parse(string);
+          obj = JSON.parse(string).results[0];
         } catch (err) {
-          obj = { results: [] };
+          obj = { now: { text: "", temperature: "" } };
         }
-        resolve(obj.results[0]);
+        resolve(obj);
       });
     });
     request.on("error", (error: string) => {
