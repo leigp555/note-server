@@ -18,8 +18,9 @@ import { Articles, Avatars, CanvasImages, Users } from "../model/mdb_create";
 const { Op } = require("sequelize");
 import { verifyToken } from "../middleware/verify_token";
 import { translate } from "../util/translate";
-const router = express.Router();
+import { getWeather } from "../util/weather";
 
+const router = express.Router();
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 
@@ -688,7 +689,7 @@ router.get(
       if (ret) {
         res.status(200).json({ images: all_image });
       } else {
-        res.status(404).json({ errMsg: "内容不存在" });
+        res.status(200).json({ images: [] });
       }
     } catch (error) {
       next(error);
@@ -736,8 +737,33 @@ router.get(
       to: string;
     };
     try {
-      const result = await translate(word, from, to);
-      res.status(200).json({ result });
+      if (word && from && to) {
+        const result = await translate(word, from, to);
+        res.status(200).json({ result });
+      } else {
+        res.status(400).json({ result: "" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.get(
+  "/weather",
+  verifyToken,
+  async (
+    req: Request & { userEmail: string },
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { location } = req.query as { location: string };
+    try {
+      if (location) {
+        const result = await getWeather(location);
+        res.status(200).json({ result });
+      } else {
+        res.status(400).json({ result: [] });
+      }
     } catch (error) {
       next(error);
     }
